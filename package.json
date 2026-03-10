@@ -1,0 +1,16 @@
+{
+  "name": "sb-rewrite",
+  "version": "1.0.0",
+  "description": "ストレンジブレイン文章リライトAPP",
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start"
+  },
+  "dependencies": {
+    "next": "^14.2.0",
+    "react": "^18.3.0",
+    "react-dom": "^18.3.0",
+    "@supabase/supabase-js": "^2.43.0"
+  }
+}
