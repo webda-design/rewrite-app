@@ -41,11 +41,6 @@ function looksLikeHtml(text) {
   return /<(h[1-6]|p|ul|ol|li|strong|em|br|div|span|a|table|thead|tbody|tr|th|td)[^>]*>/i.test(text);
 }
 
-// ── HTMLをプレビュー表示用にサニタイズ（scriptのみ除去） ──────
-function sanitizeHtml(html) {
-  return html.replace(/<script[\s\S]*?<\/script>/gi, "");
-}
-
 // ════════════════════════════════════════════════════════════════
 export default function Home() {
   const [tab, setTab]               = useState("rewrite");
