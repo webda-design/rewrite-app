@@ -3,8 +3,8 @@
 
 // ── レートリミット（簡易・インメモリ） ──────────────────────
 const ipMap = new Map();
-const WINDOW_MS = 15 * 60 * 1000; // 15分
-const MAX_REQ   = 20;
+const WINDOW_MS = 15 * 60 * 1000;
+const MAX_REQ   = 10;
 
 function isRateLimited(ip) {
   const now = Date.now();
@@ -20,10 +20,11 @@ function isRateLimited(ip) {
 }
 
 // ── 入力バリデーション ────────────────────────────────────────
-function validateText(text) {
+function validateInput(text, mode) {
   if (typeof text !== "string") return "textは文字列です";
   if (!text.trim())             return "テキストが空です";
-  if (text.length > 5000)      return "テキストは5000文字以内にしてください";
+  if (text.length > 10000)     return "テキストは10000文字以内にしてください";
+  if (!["text", "html"].includes(mode)) return "modeはtextまたはhtmlです";
   return null;
 }
 
@@ -33,15 +34,13 @@ export default async function handler(req, res) {
     return res.status(405).json({ error: "Method Not Allowed" });
   }
 
-  // レートリミット
   const ip = req.headers["x-forwarded-for"]?.split(",")[0] || "unknown";
   if (isRateLimited(ip)) {
     return res.status(429).json({ error: "リクエストが多すぎます。しばらく待ってから再試行してください。" });
   }
 
-  // 入力バリデーション
-  const { text, constraints } = req.body || {};
-  const err = validateText(text);
+  const { text, constraints, mode = "text" } = req.body || {};
+  const err = validateInput(text, mode);
   if (err) return res.status(400).json({ error: err });
 
   if (!process.env.ANTHROPIC_API_KEY) {
@@ -54,7 +53,25 @@ export default async function handler(req, res) {
     ? constraints.map((c) => `【${c.label}】\n${c.rules.map((r) => `- ${r}`).join("\n")}`).join("\n\n")
     : "（制約条件なし）";
 
-  const prompt = `あなたは日本語の文章編集の専門家です。以下の制約条件に従って、入力された文章を自然で読みやすい日本語にリライトしてください。
+  // ── モード別プロンプト ──────────────────────────────────────
+  const prompt = mode === "html"
+    ? `あなたは日本語の文章編集の専門家です。以下の制約条件に従って、入力されたHTMLの文章部分を自然で読みやすい日本語にリライトしてください。
+
+【重要なルール】
+- HTMLタグ（<h1>〜<h6>, <p>, <ul>, <ol>, <li>, <strong>, <em>, <br> など）は一切変更・削除しない
+- タグの構造・入れ子・順序を完全に維持する
+- テキストノード（タグの間の文字）のみをリライトする
+- 制約条件に違反している文章表現のみを修正する
+- 元の意味・情報量を変えない
+- リライト後のHTMLのみを出力し、説明・コードブロック記号（\`\`\`）は一切付けない
+
+=== 制約条件 ===
+${constraintText}
+
+=== リライト対象のHTML ===
+${text}`
+
+    : `あなたは日本語の文章編集の専門家です。以下の制約条件に従って、入力された文章を自然で読みやすい日本語にリライトしてください。
 
 意味や情報量は変えずに、制約条件に違反している箇所を修正してください。
 
